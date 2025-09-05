@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reading Progress Tracker</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3b82f6">
+
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body { font-family: sans-serif; background: #f3f4f6; margin: 0; padding: 20px; }
+    .card { background: white; padding: 16px; border-radius: 16px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .progress-bar { background: #e5e7eb; border-radius: 9999px; height: 16px; width: 100%; margin-right: 8px; }
+    .progress { background: #22c55e; height: 16px; border-radius: 9999px; }
+    input { border: 1px solid #d1d5db; padding: 4px 8px; border-radius: 8px; width: 60px; }
+    button { padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; }
+    .btn-add { background: #3b82f6; color: white; }
+    .btn-save { background: #16a34a; color: white; width: 100%; }
+    .btn-delete { background: none; color: #ef4444; text-decoration: underline; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center; margin-bottom:20px;">📚 Reading Progress Tracker</h1>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [books, setBooks] = useState(() => {
+        const saved = localStorage.getItem("books");
+        return saved ? JSON.parse(saved) : [];
+      });
+      const [title, setTitle] = useState("");
+      const [totalPages, setTotalPages] = useState("");
+      const [showAddForm, setShowAddForm] = useState(false);
+
+      useEffect(() => {
+        localStorage.setItem("books", JSON.stringify(books));
+      }, [books]);
+
+      const addBook = () => {
+        if (!title || !totalPages) return;
+        const newBook = {
+          id: Date.now(),
+          title,
+          totalPages: Number(totalPages),
+          readPages: 0,
+        };
+        setBooks([...books, newBook]);
+        setTitle("");
+        setTotalPages("");
+        setShowAddForm(false);
+      };
+
+      const updateProgress = (id, readPages) => {
+        setBooks(
+          books.map((book) =>
+            book.id === id ? { ...book, readPages: Number(readPages) } : book
+          )
+        );
+      };
+
+      const deleteBook = (id) => {
+        setBooks(books.filter((book) => book.id !== id));
+      };
+
+      return (
+        <div>
+          {books.map((book) => {
+            const progress = Math.min((book.readPages / book.totalPages) * 100, 100).toFixed(1);
+            return (
+              <div key={book.id} className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <strong>{book.title}</strong>
+                    <span>{progress}% ({book.readPages}/{book.totalPages})</span>
+                  </div>
+                  <button className="btn-delete" onClick={() => deleteBook(book.id)}>Delete</button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="progress-bar">
+                    <div className="progress" style={{ width: `${progress}%` }}></div>
+                  </div>
+                  <input type="number" value={book.readPages} onChange={(e) => updateProgress(book.id, e.target.value)} />
+                </div>
+              </div>
+            );
+          })}
+
+          <div style={{ marginTop: '16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+              <button className="btn-add" onClick={() => setShowAddForm(!showAddForm)}>
+                {showAddForm ? "Close Add Book" : "Add a New Book"}
+              </button>
+            </div>
+            {showAddForm && (
+              <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
+                <input type="text" placeholder="Book Title" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
+                <input type="number" placeholder="Total Pages" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
+                <button className="btn-save" onClick={addBook}>Save Book</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+    // PWA: register a simple service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register(URL.createObjectURL(new Blob([`
+        const CACHE_NAME = 'reading-tracker-cache-v1';
+        const urlsToCache = ['/'];
+        self.addEventListener('install', event => event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))));
+        self.addEventListener('fetch', event => event.respondWith(caches.match(event.request).then(r => r || fetch(event.request))));
+      `], {type: 'application/javascript'})));
+    }
+
+  </script>
+
+  <!-- PWA manifest inlined -->
+  <script type="application/manifest+json">
+  {
+    "name": "Reading Progress Tracker",
+    "short_name": "ReadingTracker",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#f3f4f6",
+    "theme_color": "#3b82f6",
+    "icons":[{"src":"https://img.icons8.com/ios-filled/100/book.png","sizes":"100x100","type":"image/png"}]
+  }
+  </script>
+
+</body>
+</html>
