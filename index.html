@@ -41,6 +41,8 @@
       const [title, setTitle] = useState("");
       const [totalPages, setTotalPages] = useState("");
       const [showAddForm, setShowAddForm] = useState(false);
+      const [showBreakdown, setShowBreakdown] = useState(false);
+      const [selectedBookId, setSelectedBookId] = useState(null);
 
       useEffect(() => {
         localStorage.setItem("books", JSON.stringify(books));
@@ -54,6 +56,23 @@
           totalPages: Number(totalPages),
           readPages: 0,
         };
+        const updateProgress = (id, readPages) => {
+  setBooks(books.map(book => {
+    if (book.id === id) {
+      const pages = Number(readPages);
+      let log = Array.isArray(book.readingLog) ? [...book.readingLog] : [];
+      const today = getToday();
+      const prevLogEntry = log.find(l => l.date === today);
+      if (prevLogEntry) {
+        prevLogEntry.pages = pages;
+      } else {
+        log.push({ date: today, pages });
+      }
+      return { ...book, readPages: pages, readingLog: log };
+    }
+    return book;
+  }));
+};
         setBooks([...books, newBook]);
         setTitle("");
         setTotalPages("");
@@ -68,32 +87,99 @@
         );
       };
 
+      const showDailyBreakdown = (bookId) => {
+  setSelectedBookId(bookId);
+  setShowBreakdown(true);
+};
+
+const goBack = () => {
+  setShowBreakdown(false);
+  setSelectedBookId(null);
+};
+
       const deleteBook = (id) => {
         setBooks(books.filter((book) => book.id !== id));
       };
 
       return (
         <div>
-          {books.map((book) => {
-            const progress = Math.min((book.readPages / book.totalPages) * 100, 100).toFixed(1);
-            return (
-              <div key={book.id} className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <strong>{book.title}</strong>
-                    <span>{progress}% ({book.readPages}/{book.totalPages})</span>
-                  </div>
-                  <button className="btn-delete" onClick={() => deleteBook(book.id)}>Delete</button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div className="progress-bar">
-                    <div className="progress" style={{ width: `${progress}%` }}></div>
-                  </div>
-                  <input type="number" value={book.readPages} onChange={(e) => updateProgress(book.id, e.target.value)} />
-                </div>
-              </div>
-            );
-          })}
+         {books.map((book) => {
+  const progress = Math.min((book.readPages / book.totalPages) * 100, 100).toFixed(1);
+  function getToday() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function DailyBreakdown({ book, goBack }) {
+  if (!book) return <div>Book not found. <button onClick={goBack}>Back</button></div>;
+  // Prepare daily log (fill in missing days)
+  let log = Array.isArray(book.readingLog) ? [...book.readingLog] : [];
+  if (log.length === 0) {
+    log.push({ date: getToday(), pages: book.readPages });
+  }
+  const startDate = log[0].date;
+  const endDate = getToday();
+  const dayList = [];
+  let d = new Date(startDate);
+  while (d.toISOString().slice(0,10) <= endDate) {
+    const dateStr = d.toISOString().slice(0,10);
+    const found = log.find(l => l.date === dateStr);
+    dayList.push({ date: dateStr, pages: found ? found.pages : 0 });
+    d.setDate(d.getDate() + 1);
+  }
+  return (
+    <div>
+      <button className="btn-add" onClick={goBack}>&larr; Back to Dashboard</button>
+      <h2>{book.title} Daily Progress</h2>
+      {dayList.map(day => {
+        const dailyPercent = book.readPages ? (day.pages / book.readPages) * 100 : 0;
+        return (
+          <div style={{
+            background: 'white', padding: '12px', borderRadius: '10px', marginBottom: '10px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between'
+          }} key={day.date}>
+            <span style={{width:"100px"}}>{day.date}</span>
+            <div style={{background:"#e5e7eb", borderRadius:"9999px", height:"12px", width:"120px", margin:"0 8px", display:"inline-block"}}>
+              <div style={{background:"#22c55e", height:"100%", borderRadius:"9999px", width: `${dailyPercent}%`}}></div>
+            </div>
+            <span>{day.pages} pages</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+            
+  return (
+  <div>
+    {!showBreakdown ? (
+      <>
+        {/* Book cards as above */}
+        {books.map(...)} {/* Use the updated book card code above */}
+        {/* Add book form as before */}
+        <div style={{ marginTop: '16px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+            <button className="btn-add" onClick={() => setShowAddForm(!showAddForm)}>
+              {showAddForm ? "Close Add Book" : "Add a New Book"}
+            </button>
+          </div>
+          {showAddForm && (
+            <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
+              <input type="text" placeholder="Book Title" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
+              <input type="number" placeholder="Total Pages" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
+              <button className="btn-save" onClick={addBook}>Save Book</button>
+            </div>
+          )}
+        </div>
+      </>
+    ) : (
+      <DailyBreakdown 
+        book={books.find(b => b.id === selectedBookId)} 
+        goBack={goBack}
+      />
+    )}
+  </div>
+);
+})}
 
           <div style={{ marginTop: '16px' }}>
             <div style={{ textAlign: 'center', marginBottom: '8px' }}>
