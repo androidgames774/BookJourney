@@ -1,155 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reading Progress Tracker</title>
-
-  <!-- PWA manifest -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#3b82f6">
-
-  <!-- React & Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+  <meta charset="UTF-8">
+  <title>Bookjorny - Progress Dashboard</title>
   <style>
-    body { font-family: sans-serif; background: #f3f4f6; margin: 0; padding: 20px; }
-    .card { background: white; padding: 16px; border-radius: 16px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    .progress-bar { background: #e5e7eb; border-radius: 9999px; height: 16px; width: 100%; margin-right: 8px; }
-    .progress { background: #22c55e; height: 16px; border-radius: 9999px; }
-    input { border: 1px solid #d1d5db; padding: 4px 8px; border-radius: 8px; width: 60px; }
-    button { padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; }
-    .btn-add { background: #3b82f6; color: white; }
-    .btn-save { background: #16a34a; color: white; width: 100%; }
-    .btn-delete { background: none; color: #ef4444; text-decoration: underline; cursor: pointer; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f8f8f8; }
+    .section { margin-bottom: 30px; }
+    .progress-bar-bg {
+      background: #ddd;
+      border-radius: 6px;
+      width: 300px;
+      height: 24px;
+      margin-right: 10px;
+      display: inline-block;
+      vertical-align: middle;
+      cursor: pointer;
+      position: relative;
+    }
+    .progress-bar-fill {
+      background: #4caf50;
+      height: 100%;
+      border-radius: 6px 0 0 6px;
+      transition: width 0.3s;
+    }
+    .progress-label { font-size: 15px; vertical-align: middle; }
+    .daily-item {
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #back-btn { margin-bottom: 20px; cursor: pointer; color: #2196f3; border:none; background:none; font-size:18px; }
+    #daily-progress { display: none; }
+    @media (max-width:400px) {
+      .progress-bar-bg { width: 90vw; }
+    }
   </style>
 </head>
 <body>
-  <h1 style="text-align:center; margin-bottom:20px;">📚 Reading Progress Tracker</h1>
-  <div id="root"></div>
+  <div id="dashboard" class="section">
+    <h2>Book Progress Dashboard</h2>
+    <div id="main-progress-bar" class="progress-bar-bg" title="Click for daily breakdown"></div>
+    <span class="progress-label" id="progress-label"></span>
+    <p>Click the progress bar to see daily breakdown.</p>
+  </div>
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+  <div id="daily-progress" class="section">
+    <button id="back-btn">&larr; Back to Dashboard</button>
+    <h2>Daily Progress Breakdown</h2>
+    <div id="daily-list"></div>
+  </div>
 
-    function App() {
-      const [books, setBooks] = useState(() => {
-        const saved = localStorage.getItem("books");
-        return saved ? JSON.parse(saved) : [];
-      });
-      const [title, setTitle] = useState("");
-      const [totalPages, setTotalPages] = useState("");
-      const [showAddForm, setShowAddForm] = useState(false);
+  <script>
+    // Dummy Data (replace with real data source)
+    const totalPages = 120;
+    const readingLog = [
+      { date: "2025-10-20", pages: 10 },
+      { date: "2025-10-21", pages: 0 },
+      { date: "2025-10-22", pages: 5 },
+      { date: "2025-10-23", pages: 15 },
+      { date: "2025-10-24", pages: 12 },
+      // add more days as needed
+    ];
+    // Calculate current total progress
+    const totalRead = readingLog.reduce((sum, entry) => sum + entry.pages, 0);
 
-      useEffect(() => {
-        localStorage.setItem("books", JSON.stringify(books));
-      }, [books]);
-
-      const addBook = () => {
-        if (!title || !totalPages) return;
-        const newBook = {
-          id: Date.now(),
-          title,
-          totalPages: Number(totalPages),
-          readPages: 0,
-        };
-        setBooks([...books, newBook]);
-        setTitle("");
-        setTotalPages("");
-        setShowAddForm(false);
-      };
-
-      const updateProgress = (id, readPages) => {
-        setBooks(
-          books.map((book) =>
-            book.id === id ? { ...book, readPages: Number(readPages) } : book
-          )
-        );
-      };
-
-      const deleteBook = (id) => {
-        setBooks(books.filter((book) => book.id !== id));
-      };
-
-      return (
-        <div>
-          {books.map((book) => {
-            const progress = Math.min((book.readPages / book.totalPages) * 100, 100).toFixed(1);
-            return (
-              <div key={book.id} className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <strong>{book.title}</strong>
-                    <span>{progress}% ({book.readPages}/{book.totalPages})</span>
-                  </div>
-                  <button className="btn-delete" onClick={() => deleteBook(book.id)}>Delete</button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div className="progress-bar">
-                    <div className="progress" style={{ width: `${progress}%` }}></div>
-                  </div>
-                  <input type="number" value={book.readPages} onChange={(e) => updateProgress(book.id, e.target.value)} />
-                </div>
-              </div>
-            );
-          })}
-
-          <div style={{ marginTop: '16px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-              <button className="btn-add" onClick={() => setShowAddForm(!showAddForm)}>
-                {showAddForm ? "Close Add Book" : "Add a New Book"}
-              </button>
-            </div>
-            {showAddForm && (
-              <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
-                <input type="text" placeholder="Book Title" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
-                <input type="number" placeholder="Total Pages" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} style={{ width: '100%', marginBottom: '8px' }} />
-                <button className="btn-save" onClick={addBook}>Save Book</button>
-              </div>
-            )}
-          </div>
-        </div>
-      );
+    // Render main dashboard progress bar
+    function renderDashboard() {
+      document.getElementById("dashboard").style.display = "block";
+      document.getElementById("daily-progress").style.display = "none";
+      const bar = document.getElementById("main-progress-bar");
+      const percent = totalRead / totalPages;
+      bar.innerHTML = `<div class="progress-bar-fill" style="width:${percent*100}%"></div>`;
+      document.getElementById("progress-label").textContent =
+        `${totalRead} / ${totalPages} pages (${Math.round(percent*100)}%)`;
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    // Render daily breakdown page
+    function renderDailyBreakdown() {
+      document.getElementById("dashboard").style.display = "none";
+      document.getElementById("daily-progress").style.display = "block";
+      const dailyList = document.getElementById("daily-list");
+      dailyList.innerHTML = "";
 
-    // PWA: register a simple service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register(URL.createObjectURL(new Blob([`
-        const CACHE_NAME = 'reading-tracker-cache-v1';
-        const urlsToCache = ['/'];
-        self.addEventListener('install', event => event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))));
-        self.addEventListener('fetch', event => event.respondWith(caches.match(event.request).then(r => r || fetch(event.request))));
-      `], {type: 'application/javascript'})));
-    }
-
-  </script>
-
-  <!-- PWA manifest inlined -->
-   <script type="application/manifest+json">
-  {
-    "name": "Reading Progress Tracker",
-    "short_name": "ReadingTracker",
-    "start_url": ".",
-    "display": "standalone",
-    "background_color": "#f3f4f6",
-    "theme_color": "#3b82f6",
-    "icons": [
-      {
-        "src": "/icons/books-192.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      },
-      {
-        "src": "/icons/books-512.png",
-        "sizes": "512x512",
-        "type": "image/png"
+      // Find days between first and last log entry
+      const start = new Date(readingLog[0].date);
+      const end = new Date(readingLog[readingLog.length-1].date);
+      const daysArr = [];
+      for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)) {
+        const dateStr = d.toISOString().slice(0,10);
+        const entry = readingLog.find(e => e.date === dateStr);
+        daysArr.push({ date: dateStr, pages: entry ? entry.pages : 0 });
       }
-    ]
-  }
-  </script>
 
+      let progressSoFar = 0;
+      daysArr.forEach(day => {
+        progressSoFar += day.pages;
+        const percent = (day.pages && totalRead) ? day.pages / totalRead : 0;
+        const bar = `<div class="progress-bar-bg" style="width:160px;">
+          <div class="progress-bar-fill" style="width:${percent*100}%"></div>
+        </div>`;
+        dailyList.innerHTML +=
+          `<div class="daily-item">
+            <span>${day.date}</span>
+            ${bar}
+            <span>${day.pages} pages</span>
+          </div>`;
+      });
+    }
+
+    // Event listeners
+    document.getElementById("main-progress-bar").onclick = renderDailyBreakdown;
+    document.getElementById("back-btn").onclick = renderDashboard;
+
+    // Initial render
+    renderDashboard();
+  </script>
 </body>
 </html>
